@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/google/gopacket/pcap"
 	"flag"
+	"github.com/google/gopacket"
+	"github.com/google/gopacket/layers"
 )
 
 func main(){
@@ -26,5 +28,20 @@ func main(){
 	}	//ovaj deo cita sa specificne mrezne kartice
 	defer handle.Close() //ovo samo zatvara program kako nebi bio u vecnom loop-u
 	
+	nesto := gopacket.NewPacketSource(handle, handle.LinkType())
+	for packet := range nesto.Packets(){
+	
+		ipLayer := packet.Layer(layers.LayerTypeIPv4)
+		if ipLayer != nil{
+			ipBetter, _ := ipLayer.(*layers.IPv4)
+			fmt.Println("IP(Src): ", ipBetter.SrcIP,", IP(Dst):", ipBetter.DstIP )
+		}//ip ispisivac
+		
+		tcpLayer := packet.Layer(layers.LayerTypeTCP)
+		if tcpLayer != nil{
+			tcpBetter, _:=tcpLayer.(*layers.TCP)
+			fmt.Println("TCP(Src): ", tcpBetter.SrcPort, ", TCP(Dst): ", tcpBetter.DstPort)
+		}
+	}
 }
 
