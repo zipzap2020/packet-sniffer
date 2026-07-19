@@ -6,10 +6,12 @@ import (
 	"flag"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
+	"encoding/hex"
 )
 
 func main(){
 	var uredjaj = flag.String("i", "eth0", "this is a way to read from a specific interface")
+	var filter = flag.String("f", "", "this is a way to filter your output")
 	flag.Parse() //ovaj deo je da bi podrazumevane stvari u flag mogle da se zamene u buduce. ne diraj!!
 
 //	devices, err := pcap.FindAllDevs()
@@ -27,6 +29,8 @@ func main(){
 		return
 	}	//ovaj deo cita sa specificne mrezne kartice
 	defer handle.Close() //ovo samo zatvara program kako nebi bio u vecnom loop-u
+ 
+	handle.SetBPFFilter(*filter)
 	
 	nesto := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range nesto.Packets(){
@@ -34,7 +38,7 @@ func main(){
 		ipLayer := packet.Layer(layers.LayerTypeIPv4)
 		if ipLayer != nil{
 			ipBetter, _ := ipLayer.(*layers.IPv4)
-			fmt.Println("IP(Src): ", ipBetter.SrcIP,", IP(Dst):", ipBetter.DstIP )
+			fmt.Println("IP(Src): ", ipBetter.SrcIP,", IP(Dst):", ipBetter.DstIP)
 		}//ip ispisivac
 		
 		tcpLayer := packet.Layer(layers.LayerTypeTCP)
@@ -42,6 +46,25 @@ func main(){
 			tcpBetter, _:=tcpLayer.(*layers.TCP)
 			fmt.Println("TCP(Src): ", tcpBetter.SrcPort, ", TCP(Dst): ", tcpBetter.DstPort)
 		}
+		udpLayer := packet.Layer(layers.LayerTypeUDP)
+		if udpLayer != nil{
+		udpBetter, _ := udpLayer.(*layers.UDP)
+			fmt.Println("UDP(Src): ", udpBetter.SrcPort, ", UDP(Dst): ", udpBetter.DstPort)
+		}
+		app := packet.ApplicationLayer()
+		if app != nil{
+			payload := app.Payload()
+			fmt.Printf("payload: %s", hex.Dump(payload))
+		}
+		dns := packet.Layer(layers.LayerTypeDNS)
+		if dns != nil{
+			dnsBetter, _  := dns.(*layers.DNS)
+			for _, dnsQuestion := range dnsBetter.Questions{
+				fmt.Println("DNS: ", string(dnsQuestion.Name))
+			}
+		}
+		
+		fmt.Println(" ")
 	}
 }
 
