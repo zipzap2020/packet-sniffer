@@ -8,6 +8,19 @@ import (
 	"github.com/google/gopacket/layers"
 	"encoding/hex"
 )
+func isPrintableASCII(payload []byte) bool{
+
+	for _, bpay := range payload{
+		switch{
+			case bpay == 9 || bpay == 10 || bpay == 13:
+			case bpay >= 32 && bpay <= 126:
+			default:
+			return false
+			}
+		}
+		return true
+}
+
 
 func main(){
 	var uredjaj = flag.String("i", "eth0", "this is a way to read from a specific interface")
@@ -29,7 +42,7 @@ func main(){
 		return
 	}	//ovaj deo cita sa specificne mrezne kartice
 	defer handle.Close() //ovo samo zatvara program kako nebi bio u vecnom loop-u
- 
+	
 	handle.SetBPFFilter(*filter)
 	
 	nesto := gopacket.NewPacketSource(handle, handle.LinkType())
@@ -54,11 +67,16 @@ func main(){
 		app := packet.ApplicationLayer()
 		if app != nil{
 			payload := app.Payload()
-			fmt.Printf("payload: %s", hex.Dump(payload))
+			if isPrintableASCII(payload){
+				fmt.Println(string(payload))
+			}else{
+				fmt.Println("payload: \n" + hex.Dump(payload))
+
+			}
 		}
 		dns := packet.Layer(layers.LayerTypeDNS)
 		if dns != nil{
-			dnsBetter, _  := dns.(*layers.DNS)
+			dnsBetter, _ := dns.(*layers.DNS)
 			for _, dnsQuestion := range dnsBetter.Questions{
 				fmt.Println("DNS: ", string(dnsQuestion.Name))
 			}
