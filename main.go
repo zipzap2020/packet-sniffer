@@ -7,6 +7,9 @@ import (
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"encoding/hex"
+	"os"
+	"github.com/google/gopacket/pcapgo"
+
 )
 func isPrintableASCII(payload []byte) bool{
 
@@ -25,6 +28,7 @@ func isPrintableASCII(payload []byte) bool{
 func main(){
 	var uredjaj = flag.String("i", "eth0", "this is a way to read from a specific interface")
 	var filter = flag.String("f", "", "this is a way to filter your output")
+	var zapis = flag.String("t", "", "write data into .pcap file")
 	flag.Parse() //ovaj deo je da bi podrazumevane stvari u flag mogle da se zamene u buduce. ne diraj!!
 
 //	devices, err := pcap.FindAllDevs()
@@ -44,7 +48,19 @@ func main(){
 	defer handle.Close() //ovo samo zatvara program kako nebi bio u vecnom loop-u
 	
 	handle.SetBPFFilter(*filter)
+
+	var w *pcapgo.Writer
+	var dumper *os.File
 	
+	if *zapis != ""{
+		dumper, err = os.Create(*zapis + ".pcap")
+		if err != nil{
+			fmt.Println("error while creating the .pcap file", err)
+		}
+		defer dumper.Close()
+		w = pcapgo.NewWriterNanos(dumper)
+		w.WriteFileHeader(65535, handle.LinkType())
+	}
 	nesto := gopacket.NewPacketSource(handle, handle.LinkType())
 	for packet := range nesto.Packets(){
 	
@@ -81,7 +97,9 @@ func main(){
 				fmt.Println("DNS: ", string(dnsQuestion.Name))
 			}
 		}
-		
+		if w != nil{
+			w.WritePacket(packet.Metadata().CaptureInfo, packet.Data())
+		}
 		fmt.Println(" ")
 	}
 }
