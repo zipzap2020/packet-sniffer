@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"os"
 	"github.com/google/gopacket/pcapgo"
+	"strings"
 
 )
 func isPrintableASCII(payload []byte) bool{
@@ -29,17 +30,23 @@ func main(){
 	var uredjaj = flag.String("i", "eth0", "this is a way to read from a specific interface")
 	var filter = flag.String("f", "", "this is a way to filter your output")
 	var zapis = flag.String("t", "", "write data into .pcap file")
+	var mreza = flag.Bool("m", false, "check avalable interfaces")
 	flag.Parse() //ovaj deo je da bi podrazumevane stvari u flag mogle da se zamene u buduce. ne diraj!!
 
-//	devices, err := pcap.FindAllDevs()
-//	if err != nil{
-//		fmt.Println(err)
-//		return
-//	}
-//	for _, device := range devices {
-//		fmt.Print("ime: ", device.Name, "\n")
-//		fmt.Print("opis: ", device.Description, "\n")
-//	}	//ovaj deo ispisuje sve na mreznoj kartici
+	if *mreza == true{
+			devices, err := pcap.FindAllDevs()
+			if err != nil{
+				fmt.Println(err)
+				return
+			}
+			for _, device := range devices {
+				fmt.Print("ime: ", device.Name, "\n")
+				fmt.Print("opis: ", device.Description, "\n")
+			}	//ovaj deo ispisuje sve na mreznoj kartici	
+			return
+	}
+
+
 	handle, err := pcap.OpenLive(*uredjaj , 65535, true, pcap.BlockForever)
 	if err != nil{
 		fmt.Println("error with opening this specific card", err)
@@ -52,8 +59,9 @@ func main(){
 	var w *pcapgo.Writer
 	var dumper *os.File
 	
+	var before, _, _ = strings.Cut(*zapis, ".")
 	if *zapis != ""{
-		dumper, err = os.Create(*zapis + ".pcap")
+		dumper, err = os.Create(before + ".pcap")
 		if err != nil{
 			fmt.Println("error while creating the .pcap file", err)
 		}
